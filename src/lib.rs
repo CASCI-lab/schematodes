@@ -72,7 +72,13 @@ fn tss_for_group_with_signature(
     signature: (usize, usize, usize),
 ) -> Vec<TwoSymbolSchema> {
     if group.len() <= 1 {
-        return vec![];
+        assert!(group.len() == 1);
+        let lone_schema = TwoSymbolSchema {
+            redescribed_schema: group.to_vec(),
+            bubble_indices: vec![],
+            signature,
+        };
+        return vec![lone_schema];
     }
 
     let group_hash: HashSet<&Vec<u8>> = HashSet::<_>::from_iter(group);
@@ -125,10 +131,19 @@ fn tss_for_group_with_signature(
                 merged_swaps[y[1]].insert(y[0]);
             }
         }
+        let nontrivial_redescription_columns: Vec<usize> = (0..n_cols)
+            .filter(|i| redescribed_schema.iter().any(|x| x[*i] != root[*i]))
+            .collect();
+        // nontrivial_redescription_columns.sort();
         let mut bubble_indices: Vec<Vec<usize>> = vec![];
         let mut seen_inds: HashSet<usize> = HashSet::new();
         for (i, x) in merged_swaps.iter().enumerate() {
             if seen_inds.contains(&i) {
+                continue;
+            }
+            if x.iter()
+                .any(|&x| !nontrivial_redescription_columns.contains(&x))
+            {
                 continue;
             }
             seen_inds.extend(x);
