@@ -1,7 +1,5 @@
-use std::collections::HashSet;
-
-use itertools::Itertools;
 use pyo3::prelude::*;
+use std::collections::{HashMap, HashSet};
 
 /// A Python module implemented in Rust.
 #[pymodule]
@@ -10,11 +8,12 @@ fn schematodes(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<TwoSymbolSchema>()?;
     Ok(())
 }
-
+#[derive(Hash, Eq, PartialEq, Clone, Debug)]
 #[pyclass]
 struct TwoSymbolSchema {
     redescribed_schema: Vec<Vec<u8>>,
     bubble_indices: Vec<Vec<usize>>,
+    signature: usize,
 }
 
 #[pymethods]
@@ -22,8 +21,9 @@ impl TwoSymbolSchema {
     #[new]
     fn py_new(redescribed_schema: Vec<Vec<u8>>, bubble_indices: Vec<Vec<usize>>) -> PyResult<Self> {
         Ok(Self {
-            redescribed_schema,
+            redescribed_schema: redescribed_schema.clone(),
             bubble_indices,
+            signature: redescribed_schema[0].iter().map(|x| *x as usize).sum(),
         })
     }
     #[getter]
@@ -59,6 +59,7 @@ impl OneSymbolSubset {
 fn schemer(pis: Vec<Vec<u8>>) -> PyResult<Vec<TwoSymbolSchema>> {
     let mut found_sym: HashSet<Vec<usize>> = HashSet::new();
     let mut tss_vec: Vec<TwoSymbolSchema> = Vec::new();
+    let mut tss_signature_map: HashMap<usize, HashSet<TwoSymbolSchema>> = HashMap::new();
     let mut next_depth_queue: HashSet<OneSymbolSubset> = HashSet::new();
     let n_schema = pis.len();
     next_depth_queue.insert(OneSymbolSubset {
@@ -70,27 +71,44 @@ fn schemer(pis: Vec<Vec<u8>>) -> PyResult<Vec<TwoSymbolSchema>> {
     for _depth in 0..n_schema {
         let depth_queue = next_depth_queue.clone();
         next_depth_queue.clear();
-        // println!("depth_queue = {:?}", &depth_queue.len());
 
         for oss in depth_queue {
             let group = oss.schema.clone();
             let included_inds = oss.indices.clone();
             // at this point, group is a vector of one symbol schemata, each represented as a vector of 0s, 1s, and 2s,
             // and included_inds is a vector of indices into pis that describe group.
-            // println!("group = {:?}", &group);
+
             if combo_superset_seen(&included_inds, &found_sym) {
                 continue;
             }
 
-            let sym = check_for_symmetry(&group);
+            // now, if the row sums are all the same, we can try to collapse the group
+            let signatures: Vec<usize> = group
+                .iter()
+                .map(|g| g.iter().map(|x| *x as usize).sum())
+                .collect();
+
+            let equivalent_signatures: bool = signatures.iter().all(|g| *g == signatures[0]);
+            let mut sym: Vec<Vec<usize>> = Vec::new();
+            if equivalent_signatures {
+                sym = check_for_symmetry(&group);
+            }
 
             if group.len() == 1 || !sym.is_empty() {
                 // symmetry to report or done
                 found_sym.insert(included_inds.clone());
-                tss_vec.push(TwoSymbolSchema {
+                let tss = TwoSymbolSchema {
                     redescribed_schema: group.iter().map(|x| x.to_vec()).collect(),
                     bubble_indices: sym,
-                })
+                    signature: signatures[0],
+                };
+                tss_vec.push(tss.clone());
+                let mut sigmap = tss_signature_map
+                    .get(&signatures[0])
+                    .unwrap_or(&HashSet::new() as &HashSet<TwoSymbolSchema>)
+                    .clone();
+                sigmap.insert(tss);
+                tss_signature_map.insert(signatures[0], sigmap);
             } else {
                 for index_to_remove in included_inds {
                     if let Some(last_index_removed) = oss.last_index_removed {
@@ -98,9 +116,7 @@ fn schemer(pis: Vec<Vec<u8>>) -> PyResult<Vec<TwoSymbolSchema>> {
                         if last_index_removed > index_to_remove {
                             continue;
                         }
-                        // println!("last_index_removed = {:?}", &last_index_removed);
                     }
-                    // println!("index_to_remove = {:?}", &index_to_remove);
 
                     next_depth_queue.insert({
                         let mut new_oss = oss.clone();
@@ -114,19 +130,19 @@ fn schemer(pis: Vec<Vec<u8>>) -> PyResult<Vec<TwoSymbolSchema>> {
     Ok(tss_vec)
 }
 
-fn collapse_two_symbol_vector(tss_vec: &mut Vec<TwoSymbolSchema>) {
-    let n_tss = tss_vec.len();
-    if n_tss < 2 {
-        return;
+fn collapse_two_symbols(tss_signature_map: &mut HashMap<usize, HashSet<TwoSymbolSchema>>) {
+    for tss_vec in tss_signature_map.values_mut() {
+        let n_tss = tss_vec.len();
+        if n_tss < 2 {
+            continue;
+        }
+
+        // loop through tss_vec via v
+        // loop through tss_vec via u
+        // ???
+        // profit!
     }
-    let stake: usize = 0;
-    let cast: usize = 1;
 
-    // while stake < n_tss - 1 {}
-    todo!()
-}
-
-fn can_merge_two_symbol_schemas(tss1: &TwoSymbolSchema, tss2: &TwoSymbolSchema) -> bool {
     todo!()
 }
 
@@ -138,6 +154,7 @@ fn merge_two_symbol_schemas(tss1: &TwoSymbolSchema, tss2: &TwoSymbolSchema) -> T
     TwoSymbolSchema {
         redescribed_schema: new_schema,
         bubble_indices: new_indices,
+        signature: tss1.signature,
     }
 }
 
