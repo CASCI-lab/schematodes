@@ -1,5 +1,6 @@
+use itertools::Itertools;
 use pyo3::prelude::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 /// A Python module implemented in Rust.
 #[pymodule]
@@ -13,7 +14,7 @@ fn schematodes(_py: Python, m: &PyModule) -> PyResult<()> {
 struct TwoSymbolSchema {
     redescribed_schema: Vec<Vec<u8>>,
     bubble_indices: Vec<Vec<usize>>,
-    signature: usize,
+    signature: (usize, usize, usize),
 }
 
 #[pymethods]
@@ -23,7 +24,7 @@ impl TwoSymbolSchema {
         Ok(Self {
             redescribed_schema: redescribed_schema.clone(),
             bubble_indices,
-            signature: redescribed_schema[0].iter().map(|x| *x as usize).sum(),
+            signature: compute_signature(&redescribed_schema[0]),
         })
     }
     #[getter]
@@ -43,183 +44,137 @@ struct OneSymbolSubset {
     last_index_removed: Option<usize>,
 }
 
-impl OneSymbolSubset {
-    fn remove_index(&mut self, index_to_remove: usize) {
-        if let Some(index_position) = self.indices.iter().position(|i| *i == index_to_remove) {
-            self.schema.remove(index_position);
-            self.indices.remove(index_position);
-            self.last_index_removed = Some(index_to_remove);
-        } else {
-            panic!();
-        }
-    }
-}
-
 #[pyfunction]
 fn schemer(pis: Vec<Vec<u8>>) -> PyResult<Vec<TwoSymbolSchema>> {
-    let mut found_sym: HashSet<Vec<usize>> = HashSet::new();
     let mut tss_vec: Vec<TwoSymbolSchema> = Vec::new();
-    let mut tss_signature_map: HashMap<usize, HashSet<TwoSymbolSchema>> = HashMap::new();
-    let mut next_depth_queue: HashSet<OneSymbolSubset> = HashSet::new();
-    let n_schema = pis.len();
-    next_depth_queue.insert(OneSymbolSubset {
-        schema: pis,
-        indices: (0..n_schema).collect(),
-        last_index_removed: None,
-    });
 
-    for _depth in 0..n_schema {
-        let depth_queue = next_depth_queue.clone();
-        next_depth_queue.clear();
-
-        for oss in depth_queue {
-            let group = oss.schema.clone();
-            let included_inds = oss.indices.clone();
-            // at this point, group is a vector of one symbol schemata, each represented as a vector of 0s, 1s, and 2s,
-            // and included_inds is a vector of indices into pis that describe group.
-
-            if combo_superset_seen(&included_inds, &found_sym) {
-                continue;
-            }
-
-            // now, if the row sums are all the same, we can try to collapse the group
-            let signatures: Vec<usize> = group
-                .iter()
-                .map(|g| g.iter().map(|x| *x as usize).sum())
-                .collect();
-
-            let equivalent_signatures: bool = signatures.iter().all(|g| *g == signatures[0]);
-            let mut sym: Vec<Vec<usize>> = Vec::new();
-            if equivalent_signatures {
-                sym = check_for_symmetry(&group);
-            }
-
-            if group.len() == 1 || !sym.is_empty() {
-                // symmetry to report or done
-                found_sym.insert(included_inds.clone());
-                let tss = TwoSymbolSchema {
-                    redescribed_schema: group.iter().map(|x| x.to_vec()).collect(),
-                    bubble_indices: sym,
-                    signature: signatures[0],
-                };
-                tss_vec.push(tss.clone());
-                let mut sigmap = tss_signature_map
-                    .get(&signatures[0])
-                    .unwrap_or(&HashSet::new() as &HashSet<TwoSymbolSchema>)
-                    .clone();
-                sigmap.insert(tss);
-                tss_signature_map.insert(signatures[0], sigmap);
-            } else {
-                for index_to_remove in included_inds {
-                    if let Some(last_index_removed) = oss.last_index_removed {
-                        // avoids duplicating groups
-                        if last_index_removed > index_to_remove {
-                            continue;
-                        }
-                    }
-
-                    next_depth_queue.insert({
-                        let mut new_oss = oss.clone();
-                        new_oss.remove_index(index_to_remove);
-                        new_oss
-                    });
-                }
-            }
+    let mut schema_with_signature: HashMap<(usize, usize, usize), Vec<Vec<u8>>> = HashMap::new();
+    for pi in pis {
+        let signature = compute_signature(&pi);
+        if !schema_with_signature.contains_key(&signature) {
+            schema_with_signature.insert(signature, vec![pi]);
+        } else {
+            let mut pi_vec: Vec<Vec<u8>> = schema_with_signature[&signature].to_vec();
+            pi_vec.push(pi);
+            schema_with_signature.insert(signature, pi_vec);
         }
+    }
+
+    for (signature, pi) in schema_with_signature {
+        let tss = tss_for_group_with_signature(&pi, signature);
+        tss_vec.extend(tss);
     }
     Ok(tss_vec)
 }
 
-fn collapse_two_symbols(tss_signature_map: &mut HashMap<usize, HashSet<TwoSymbolSchema>>) {
-    for tss_vec in tss_signature_map.values_mut() {
-        let n_tss = tss_vec.len();
-        if n_tss < 2 {
-            continue;
-        }
-
-        // loop through tss_vec via v
-        // loop through tss_vec via u
-        // ???
-        // profit!
-    }
-
-    todo!()
-}
-
-fn merge_two_symbol_schemas(tss1: &TwoSymbolSchema, tss2: &TwoSymbolSchema) -> TwoSymbolSchema {
-    let mut new_schema = tss1.redescribed_schema.clone();
-    new_schema.extend(tss2.redescribed_schema.clone());
-    let mut new_indices = tss1.bubble_indices.clone();
-    new_indices.extend(tss2.bubble_indices.clone());
-    TwoSymbolSchema {
-        redescribed_schema: new_schema,
-        bubble_indices: new_indices,
-        signature: tss1.signature,
-    }
-}
-
-fn combo_superset_seen(included_inds: &Vec<usize>, found_sym: &HashSet<Vec<usize>>) -> bool {
-    for seen in found_sym {
-        let mut seen_matches = true;
-        for i in included_inds {
-            if !seen.contains(i) {
-                seen_matches = false;
-                break;
-            }
-        }
-        if seen_matches {
-            return true;
-        }
-    }
-    false
-}
-
-fn check_for_symmetry(group: &Vec<Vec<u8>>) -> Vec<Vec<usize>> {
+fn tss_for_group_with_signature(
+    group: &Vec<Vec<u8>>,
+    signature: (usize, usize, usize),
+) -> Vec<TwoSymbolSchema> {
     if group.len() <= 1 {
-        return Vec::new();
+        return vec![];
     }
 
+    let group_hash: HashSet<&Vec<u8>> = HashSet::<_>::from_iter(group);
     let n_cols = group[0].len();
-    let mut sym: Vec<Vec<usize>> = Vec::new();
     let nontrivial_columns: Vec<usize> = (0..n_cols)
         .filter(|i| group.iter().any(|x| x[*i] != group[0][*i]))
         .collect();
 
-    let group_hash: HashSet<Vec<u8>> = group
-        .iter()
-        .map(|g| {
-            let g_iter: Vec<u8> = g
+    let mut uncovered_schema: BTreeSet<&Vec<u8>> = BTreeSet::from_iter(group);
+
+    let mut sym: Vec<TwoSymbolSchema> = vec![];
+
+    while !uncovered_schema.is_empty() {
+        let root = uncovered_schema.pop_last().unwrap();
+        let mut swap_candidates: Vec<Vec<usize>> = group
+            .iter()
+            .map(|x| differing_indices(root, x, Some(2)))
+            .filter(|y| y.len() == 2)
+            .collect();
+
+        for pair in nontrivial_columns.iter().combinations(2) {
+            let i = *pair[0];
+            let j = *pair[1];
+            if root[i] == root[j] {
+                swap_candidates.push(vec![i, j]);
+            }
+        }
+
+        let rep = root.clone();
+
+        let mut redescribed_schema: HashSet<Vec<u8>> = HashSet::new();
+        redescribed_schema.insert(rep);
+        let mut merged_swaps: Vec<HashSet<usize>> = (0..root.len())
+            .map(|ind| HashSet::from_iter(ind..ind + 1))
+            .collect();
+        for y in swap_candidates {
+            let swapped_schema: HashSet<Vec<u8>> = redescribed_schema
                 .iter()
-                .enumerate()
-                .filter(|(i, _)| nontrivial_columns.contains(i))
-                .map(|(_, x)| *x)
+                .map(|g| {
+                    let mut gs = g.clone();
+                    gs.swap(y[0], y[1]);
+                    gs
+                })
                 .collect();
-            g_iter.to_vec()
-        })
-        .collect();
 
-    let group_hash_swap_two: HashSet<Vec<u8>> = group_hash
-        .iter()
-        .cloned()
-        .map(|x| {
-            let mut y = x;
-            y.swap(0, 1);
-            y
-        })
-        .collect();
-
-    let group_hash_full_cycle: HashSet<Vec<u8>> = group_hash
-        .iter()
-        .map(|x| {
-            let mut y = Vec::from_iter(x[1..].iter().cloned());
-            y.push(x[0]);
-            y
-        })
-        .collect();
-
-    if group_hash == group_hash_swap_two && group_hash == group_hash_full_cycle {
-        sym = vec![nontrivial_columns]
+            if swapped_schema.iter().all(|g| group_hash.contains(&g)) {
+                redescribed_schema.extend(swapped_schema);
+                uncovered_schema.retain(|&g| !redescribed_schema.contains(g));
+                merged_swaps[y[0]].insert(y[1]);
+                merged_swaps[y[1]].insert(y[0]);
+            }
+        }
+        let mut bubble_indices: Vec<Vec<usize>> = vec![];
+        let mut seen_inds: HashSet<usize> = HashSet::new();
+        for (i, x) in merged_swaps.iter().enumerate() {
+            if seen_inds.contains(&i) {
+                continue;
+            }
+            seen_inds.extend(x);
+            let mut xv: Vec<usize> = x.iter().cloned().collect();
+            if xv.len() > 1 {
+                xv.sort_unstable();
+                bubble_indices.push(xv);
+            }
+        }
+        sym.push(TwoSymbolSchema {
+            redescribed_schema: redescribed_schema.iter().map(|x| x.to_vec()).collect(),
+            bubble_indices,
+            signature,
+        });
     }
 
     sym
+}
+
+fn differing_indices(x: &[u8], y: &[u8], break_above: Option<usize>) -> Vec<usize> {
+    let mut diff: Vec<usize> = Vec::new();
+    let break_above = break_above.unwrap_or(x.len() + 1);
+    let mut num_pushed: usize = 0;
+    for (i, (a, b)) in x.iter().zip(y.iter()).enumerate() {
+        if a != b {
+            diff.push(i);
+            num_pushed += 1;
+            if num_pushed > break_above {
+                break;
+            }
+        }
+    }
+
+    diff
+}
+
+fn compute_signature(one_symbol_schemata: &[u8]) -> (usize, usize, usize) {
+    let mut signature = (0, 0, 0);
+    for x in one_symbol_schemata {
+        match x {
+            0 => signature.0 += 1,
+            1 => signature.1 += 1,
+            2 => signature.2 += 1,
+            _ => (),
+        }
+    }
+
+    signature
 }

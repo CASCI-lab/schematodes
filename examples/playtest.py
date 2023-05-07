@@ -64,3 +64,37 @@ tss = sc.schemer(
 for c in tss:
     print("===========================")
     print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+
+print()
+print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+print()
+
+tss = sc.schemer(
+    [
+        [1, 2, 0, 0, 1],  # f1'
+        [1, 0, 2, 0, 1],  # f2'
+        [1, 2, 0, 1, 0],  # f3'
+        [2, 1, 0, 0, 1],  # f4'
+        [2, 1, 0, 1, 0],  # f5'
+    ]
+)
+for c in tss:
+    print("===========================")
+    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+
+print()
+print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+print()
+
+tss = sc.schemer(
+    [
+        [1, 2, 0, 0, 1],  # f1'
+        [1, 0, 2, 0, 1],  # f2'
+        [1, 2, 0, 1, 0],  # f3'
+        # [2, 1, 0, 0, 1],  # f4'
+        [2, 1, 0, 1, 0],  # f5'
+    ]
+)
+for c in tss:
+    print("===========================")
+    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
