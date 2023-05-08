@@ -1,11 +1,11 @@
-class TwoSymbolSchema:
+class TwoSymbolSchemata:
     """TwoSymbolSchema"""
 
     def __init__(self) -> None:
         self.redescribed_schema: list[list[int]] = ...
         self.bubble_indices: list[list[int]] = ...
 
-def schemer(one_symbol_schema: list[list[int]]) -> list[TwoSymbolSchema]:
+def schemer(one_symbol_schema: list[list[int]]) -> list[TwoSymbolSchemata]:
     """Sums two integers and returns a string using rust pyO3 bindings
 
     Parameters
@@ -16,7 +16,7 @@ def schemer(one_symbol_schema: list[list[int]]) -> list[TwoSymbolSchema]:
 
     Returns
     -------
-    list[TwoSymbolSchema]
-        A list of TwoSymbolSchema objects representing the compressed schema.
+    list[TwoSymbolSchemata]
+        A list of TwoSymbolSchemata objects representing the compressed schema.
     """
     ...
