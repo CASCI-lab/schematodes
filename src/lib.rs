@@ -37,12 +37,12 @@ impl TwoSymbolSchema {
     }
 }
 
-#[derive(Hash, Eq, PartialEq, Clone, Debug)]
-struct OneSymbolSubset {
-    schema: Vec<Vec<u8>>,
-    indices: Vec<usize>,
-    last_index_removed: Option<usize>,
-}
+// #[derive(Hash, Eq, PartialEq, Clone, Debug)]
+// struct OneSymbolSubset {
+//     schema: Vec<Vec<u8>>,
+//     indices: Vec<usize>,
+//     last_index_removed: Option<usize>,
+// }
 
 #[pyfunction]
 fn schemer(pis: Vec<Vec<u8>>) -> PyResult<Vec<TwoSymbolSchema>> {
