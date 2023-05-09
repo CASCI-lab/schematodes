@@ -10,7 +10,9 @@ fn schematodes(_py: Python, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-/// A Python class implemented in Rust.
+/// A Python class implemented in Rust. This is the primary return type of the module. See stub file for Python usage.
+/// The class contains three fields: redescribed_schema, bubble_indices, and signature. These are the set of one-symbol schemata that are redescribed,
+/// the indices of the bubbles, and the signature (number of 0s, number of 1s, and number of #s) of the schema.
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
 #[pyclass]
 struct TwoSymbolSchemata {
@@ -39,6 +41,7 @@ impl TwoSymbolSchemata {
     }
 }
 
+/// This is the function that will be used in Python to redescribe a set of one-symbol schema as a list of two-symbol schema.
 #[pyfunction]
 fn schemer(pis: Vec<Vec<u8>>) -> PyResult<Vec<TwoSymbolSchemata>> {
     let mut tss_vec: Vec<TwoSymbolSchemata> = Vec::new();
@@ -161,17 +164,19 @@ fn tss_for_one_symbol_schema_with_signature(
         let mut seen_inds: HashSet<usize> = HashSet::new();
         for (i, x) in merged_swaps.iter().enumerate() {
             if seen_inds.contains(&i) {
+                // avoid duplicates
                 continue;
             }
-            if x.iter()
+            if x.iter() // only consider transpositions that map to nontrivial columns, i.e., we are not doing same-symbol symmetry here
                 .any(|&x| !nontrivial_redescription_columns.contains(&x))
             {
                 continue;
             }
             seen_inds.extend(x);
-            let mut xv: Vec<usize> = x.iter().cloned().collect();
+
+            let mut xv: Vec<usize> = x.iter().cloned().collect(); // cana expects a list of bubble indices, so we convert to vec here
             if xv.len() > 1 {
-                xv.sort_unstable();
+                xv.sort_unstable(); // we use unstable sort because we don't have duplicates, and even if we did, we wouldn't care if they got swapped
                 bubble_indices.push(xv);
             }
         }
@@ -185,6 +190,9 @@ fn tss_for_one_symbol_schema_with_signature(
     sym
 }
 
+/// Find the indices where the input arrays `x` and `y` differ, and return a vector of the indices.
+/// Optionally, a `break_above parameter` can be provided, which returns early if the number of indices exceeds `break_above`.
+/// This is useful for when we only want to identify arrays that differ by a specific number of entries.
 fn differing_indices(x: &[u8], y: &[u8], break_above: Option<usize>) -> Vec<usize> {
     let mut diff: Vec<usize> = Vec::new();
     let break_above = break_above.unwrap_or(x.len() + 1);
@@ -198,10 +206,10 @@ fn differing_indices(x: &[u8], y: &[u8], break_above: Option<usize>) -> Vec<usiz
             }
         }
     }
-
     diff
 }
 
+/// Compute the signature of the one-symbol schemata, which is the number of 0s, 1s, and 2s
 fn compute_signature(one_symbol_schemata: &[u8]) -> (usize, usize, usize) {
     let mut signature = (0, 0, 0);
     for x in one_symbol_schemata {
@@ -212,6 +220,5 @@ fn compute_signature(one_symbol_schemata: &[u8]) -> (usize, usize, usize) {
             _ => (),
         }
     }
-
     signature
 }
