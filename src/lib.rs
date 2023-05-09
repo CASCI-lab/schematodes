@@ -6,19 +6,23 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 #[pymodule]
 fn schematodes(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(schemer, m)?)?;
-    m.add_class::<TwoSymbolSchema>()?;
+    m.add_class::<TwoSymbolSchemata>()?;
     Ok(())
 }
+
+/// A Python class implemented in Rust. This is the primary return type of the module. See stub file for Python usage.
+/// The class contains three fields: redescribed_schema, bubble_indices, and signature. These are the set of one-symbol schemata that are redescribed,
+/// the indices of the bubbles, and the signature (number of 0s, number of 1s, and number of #s) of the schema.
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
 #[pyclass]
-struct TwoSymbolSchema {
+struct TwoSymbolSchemata {
     redescribed_schema: Vec<Vec<u8>>,
     bubble_indices: Vec<Vec<usize>>,
     signature: (usize, usize, usize),
 }
 
 #[pymethods]
-impl TwoSymbolSchema {
+impl TwoSymbolSchemata {
     #[new]
     fn py_new(redescribed_schema: Vec<Vec<u8>>, bubble_indices: Vec<Vec<usize>>) -> PyResult<Self> {
         Ok(Self {
@@ -37,17 +41,12 @@ impl TwoSymbolSchema {
     }
 }
 
-#[derive(Hash, Eq, PartialEq, Clone, Debug)]
-struct OneSymbolSubset {
-    schema: Vec<Vec<u8>>,
-    indices: Vec<usize>,
-    last_index_removed: Option<usize>,
-}
-
+/// This is the function that will be used in Python to redescribe a set of one-symbol schema as a list of two-symbol schema.
 #[pyfunction]
-fn schemer(pis: Vec<Vec<u8>>) -> PyResult<Vec<TwoSymbolSchema>> {
-    let mut tss_vec: Vec<TwoSymbolSchema> = Vec::new();
+fn schemer(pis: Vec<Vec<u8>>) -> PyResult<Vec<TwoSymbolSchemata>> {
+    let mut tss_vec: Vec<TwoSymbolSchemata> = Vec::new();
 
+    // gather one-symbol schema by the number of 0s, 1s, and #s in the schema.
     let mut schema_with_signature: HashMap<(usize, usize, usize), Vec<Vec<u8>>> = HashMap::new();
     for pi in pis {
         let signature = compute_signature(&pi);
@@ -60,45 +59,62 @@ fn schemer(pis: Vec<Vec<u8>>) -> PyResult<Vec<TwoSymbolSchema>> {
         }
     }
 
+    // Loop through the unique signatures and compress the corresponding schema for each.
     for (signature, pi) in schema_with_signature {
-        let tss = tss_for_group_with_signature(&pi, signature);
+        let tss = tss_for_one_symbol_schema_with_signature(&pi, signature);
         tss_vec.extend(tss);
     }
     Ok(tss_vec)
 }
 
-fn tss_for_group_with_signature(
-    group: &Vec<Vec<u8>>,
+/// Compress a one_symbol_schema of schema that have the same signature.
+/// This function does not verify that the signatures are equal, and will give incorrect results if they are not.
+/// Returns a vector of TwoSymbolSchemata objects corresponding to a one_symbol_schema action of a product of symmetric one_symbol_schemas.
+fn tss_for_one_symbol_schema_with_signature(
+    one_symbol_schema: &Vec<Vec<u8>>,
     signature: (usize, usize, usize),
-) -> Vec<TwoSymbolSchema> {
-    if group.len() <= 1 {
-        assert!(group.len() == 1);
-        let lone_schema = TwoSymbolSchema {
-            redescribed_schema: group.to_vec(),
+) -> Vec<TwoSymbolSchemata> {
+    if one_symbol_schema.len() <= 1 {
+        assert!(one_symbol_schema.len() == 1);
+        let lone_schema = TwoSymbolSchemata {
+            redescribed_schema: one_symbol_schema.to_vec(),
             bubble_indices: vec![],
             signature,
         };
         return vec![lone_schema];
     }
+    // the members of the one_symbol_schema are hashed so that we can easily check whether a permutation of a schema maintains closure
+    let one_symbol_schema_hash: HashSet<&Vec<u8>> = HashSet::<_>::from_iter(one_symbol_schema);
 
-    let group_hash: HashSet<&Vec<u8>> = HashSet::<_>::from_iter(group);
-    let n_cols = group[0].len();
+    // Find the nontrivial columns of the one_symbol_schema; trivial columns are those for which all symbols are the same
+    let n_cols = one_symbol_schema[0].len();
     let nontrivial_columns: Vec<usize> = (0..n_cols)
-        .filter(|i| group.iter().any(|x| x[*i] != group[0][*i]))
+        .filter(|i| {
+            one_symbol_schema
+                .iter()
+                .any(|x| x[*i] != one_symbol_schema[0][*i])
+        })
         .collect();
 
-    let mut uncovered_schema: BTreeSet<&Vec<u8>> = BTreeSet::from_iter(group);
+    // initialize the two-symbol schema vector that we will eventually return
+    let mut sym: Vec<TwoSymbolSchemata> = vec![];
 
-    let mut sym: Vec<TwoSymbolSchema> = vec![];
-
+    // every one-symbol schemata must eventually be covered by a two symbol schemata
+    let mut uncovered_schema: BTreeSet<&Vec<u8>> = BTreeSet::from_iter(one_symbol_schema);
     while !uncovered_schema.is_empty() {
+        // the schemata `root` corresponds to the representative of the two-symbol schemata that will generate on this iteration of the loop
         let root = uncovered_schema.pop_last().unwrap();
-        let mut swap_candidates: Vec<Vec<usize>> = group
+
+        // a transposition is a candidate if
+        // 1. it maps root to a different element of the one_symbol_schema OR
+        // 2. it transposes nontrivial columns that leave root invariant.
+        // condition 1:
+        let mut swap_candidates: Vec<Vec<usize>> = one_symbol_schema
             .iter()
             .map(|x| differing_indices(root, x, Some(2)))
             .filter(|y| y.len() == 2)
             .collect();
-
+        // condition 2:
         for pair in nontrivial_columns.iter().combinations(2) {
             let i = *pair[0];
             let j = *pair[1];
@@ -107,14 +123,16 @@ fn tss_for_group_with_signature(
             }
         }
 
-        let rep = root.clone();
-
+        // Now we start looking for an inclusion-maximal product of symmetric groups that can act on root while maintaining closure.
+        // The trivial group acting on root is the trivial case; we will expand from there.
         let mut redescribed_schema: HashSet<Vec<u8>> = HashSet::new();
-        redescribed_schema.insert(rep);
+        redescribed_schema.insert(root.clone());
         let mut merged_swaps: Vec<HashSet<usize>> = (0..root.len())
             .map(|ind| HashSet::from_iter(ind..ind + 1))
             .collect();
+        // Iterate through the candidate swaps and merge them in order if they keeps the merged set in the one_symbol_schema set.
         for y in swap_candidates {
+            // this iter,map,collect chain applies the swap to everything we have added so far
             let swapped_schema: HashSet<Vec<u8>> = redescribed_schema
                 .iter()
                 .map(|g| {
@@ -124,36 +142,45 @@ fn tss_for_group_with_signature(
                 })
                 .collect();
 
-            if swapped_schema.iter().all(|g| group_hash.contains(&g)) {
+            // check if the swap maps redescribed_schema into the one_symbol_schema set;
+            // if so, add this image to the redscribed_schema and record the swapped indices.
+            if swapped_schema
+                .iter()
+                .all(|g| one_symbol_schema_hash.contains(&g))
+            {
                 redescribed_schema.extend(swapped_schema);
                 uncovered_schema.retain(|&g| !redescribed_schema.contains(g));
                 merged_swaps[y[0]].insert(y[1]);
                 merged_swaps[y[1]].insert(y[0]);
             }
         }
+        // record the columns of the redescribed schema that are not the same in this subset
         let nontrivial_redescription_columns: Vec<usize> = (0..n_cols)
             .filter(|i| redescribed_schema.iter().any(|x| x[*i] != root[*i]))
             .collect();
-        // nontrivial_redescription_columns.sort();
+
+        // finally, convert the transpoitions to bubble indices
         let mut bubble_indices: Vec<Vec<usize>> = vec![];
         let mut seen_inds: HashSet<usize> = HashSet::new();
         for (i, x) in merged_swaps.iter().enumerate() {
             if seen_inds.contains(&i) {
+                // avoid duplicates
                 continue;
             }
-            if x.iter()
+            if x.iter() // only consider transpositions that map to nontrivial columns, i.e., we are not doing same-symbol symmetry here
                 .any(|&x| !nontrivial_redescription_columns.contains(&x))
             {
                 continue;
             }
             seen_inds.extend(x);
-            let mut xv: Vec<usize> = x.iter().cloned().collect();
+
+            let mut xv: Vec<usize> = x.iter().cloned().collect(); // cana expects a list of bubble indices, so we convert to vec here
             if xv.len() > 1 {
-                xv.sort_unstable();
+                xv.sort_unstable(); // we use unstable sort because we don't have duplicates, and even if we did, we wouldn't care if they got swapped
                 bubble_indices.push(xv);
             }
         }
-        sym.push(TwoSymbolSchema {
+        sym.push(TwoSymbolSchemata {
             redescribed_schema: redescribed_schema.iter().map(|x| x.to_vec()).collect(),
             bubble_indices,
             signature,
@@ -163,6 +190,9 @@ fn tss_for_group_with_signature(
     sym
 }
 
+/// Find the indices where the input arrays `x` and `y` differ, and return a vector of the indices.
+/// Optionally, a `break_above parameter` can be provided, which returns early if the number of indices exceeds `break_above`.
+/// This is useful for when we only want to identify arrays that differ by a specific number of entries.
 fn differing_indices(x: &[u8], y: &[u8], break_above: Option<usize>) -> Vec<usize> {
     let mut diff: Vec<usize> = Vec::new();
     let break_above = break_above.unwrap_or(x.len() + 1);
@@ -176,10 +206,10 @@ fn differing_indices(x: &[u8], y: &[u8], break_above: Option<usize>) -> Vec<usiz
             }
         }
     }
-
     diff
 }
 
+/// Compute the signature of the one-symbol schemata, which is the number of 0s, 1s, and 2s
 fn compute_signature(one_symbol_schemata: &[u8]) -> (usize, usize, usize) {
     let mut signature = (0, 0, 0);
     for x in one_symbol_schemata {
@@ -190,6 +220,5 @@ fn compute_signature(one_symbol_schemata: &[u8]) -> (usize, usize, usize) {
             _ => (),
         }
     }
-
     signature
 }
