@@ -85,7 +85,6 @@ fn tss_for_one_symbol_schema_with_signature(
     }
     // the members of the one_symbol_schema are hashed so that we can easily check whether a permutation of a schema maintains closure
     let one_symbol_schema_hash: HashSet<&Vec<u8>> = HashSet::<_>::from_iter(one_symbol_schema);
-    println!("one symbol schema: {:?}", one_symbol_schema_hash);
     // Find the nontrivial columns of the one_symbol_schema; trivial columns are those for which all symbols are the same
     let n_cols = one_symbol_schema[0].len();
     let nontrivial_columns: Vec<usize> = (0..n_cols)
