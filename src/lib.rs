@@ -96,7 +96,7 @@ fn tss_for_one_symbol_schema_with_signature(
         .collect();
 
     // initialize the two-symbol schema vector that we will eventually return
-    let mut sym: Vec<TwoSymbolSchemata> = vec![];
+    let mut sym: HashSet<TwoSymbolSchemata> = HashSet::new();
 
     // every one-symbol schemata must eventually be covered by a two symbol schemata
     let mut uncovered_schema: BTreeSet<&Vec<u8>> = BTreeSet::from_iter(one_symbol_schema);
@@ -160,7 +160,7 @@ fn tss_for_one_symbol_schema_with_signature(
                 .all(|g| one_symbol_schema_hash.contains(&g))
             {
                 redescribed_schema.extend(swapped_schema);
-                uncovered_schema.retain(|&g| !redescribed_schema.contains(g));
+                // uncovered_schema.retain(|&g| !redescribed_schema.contains(g));
                 transpositions.push(y.clone());
                 merged_swaps[y[0]].insert(y[1]);
                 merged_swaps[y[1]].insert(y[0]);
@@ -192,14 +192,18 @@ fn tss_for_one_symbol_schema_with_signature(
                 bubble_indices.push(xv);
             }
         }
-        sym.push(TwoSymbolSchemata {
-            redescribed_schema: redescribed_schema.iter().map(|x| x.to_vec()).collect(),
-            bubble_indices,
+        sym.insert(TwoSymbolSchemata {
+            redescribed_schema: redescribed_schema
+                .iter()
+                .map(|x| x.to_vec())
+                .sorted()
+                .collect(),
+            bubble_indices: bubble_indices.iter().map(|x| x.to_vec()).sorted().collect(),
             signature,
         });
     }
 
-    sym
+    sym.into_iter().collect()
 }
 
 /// Find the indices where the input arrays `x` and `y` differ, and return a vector of the indices.
