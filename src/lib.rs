@@ -104,7 +104,6 @@ fn tss_for_one_symbol_schema_with_signature(
     while !uncovered_schema.is_empty() {
         // the schemata `root` corresponds to the representative of the two-symbol schemata that will generate on this iteration of the loop
         let root = uncovered_schema.pop_last().unwrap();
-        println!("root: {:?}", root);
         // a transposition is a candidate if
         // 1. it maps root to a different element of the one_symbol_schema OR
         // 2. it transposes nontrivial columns that leave root invariant.
@@ -122,9 +121,8 @@ fn tss_for_one_symbol_schema_with_signature(
                 swap_candidates.push(vec![i, j]);
             }
         }
-        println!("swap candidates: {:?}", swap_candidates);
 
-        let mut transpositions: Vec<Vec<usize>> = vec![vec![0, 0]];
+        let mut transpositions: Vec<Vec<usize>> = Vec::new();
 
         // Now we start looking for an inclusion-maximal product of symmetric groups that can act on root while maintaining closure.
         // The trivial group acting on root is the trivial case; we will expand from there.
@@ -135,8 +133,6 @@ fn tss_for_one_symbol_schema_with_signature(
             .collect();
         // Iterate through the candidate swaps and merge them in order if they keeps the merged set in the one_symbol_schema set.
         for y in swap_candidates {
-            println!("swap candidate: {:?}", y);
-
             // find the orbit of the transpositions so far and the candiated transposition y
             let mut swapped_schema: HashSet<Vec<u8>> = redescribed_schema.clone();
             let mut transpotion_candidates: Vec<Vec<usize>> = transpositions.clone();
@@ -158,7 +154,6 @@ fn tss_for_one_symbol_schema_with_signature(
                 closure_found = old_size == swapped_schema.len();
             }
 
-            println!("swapped schema: {:?}", swapped_schema);
             // check if the swap maps redescribed_schema into the one_symbol_schema set;
             // if so, add this image to the redscribed_schema and record the swapped indices.
             if swapped_schema
@@ -170,7 +165,6 @@ fn tss_for_one_symbol_schema_with_signature(
                 transpositions.push(y.clone());
                 merged_swaps[y[0]].insert(y[1]);
                 merged_swaps[y[1]].insert(y[0]);
-                println!("redescribed schema: {:?}", redescribed_schema);
             }
         }
         // record the columns of the redescribed schema that are not the same in this subset
