@@ -85,7 +85,7 @@ fn tss_for_one_symbol_schema_with_signature(
     }
     // the members of the one_symbol_schema are hashed so that we can easily check whether a permutation of a schema maintains closure
     let one_symbol_schema_hash: HashSet<&Vec<u8>> = HashSet::<_>::from_iter(one_symbol_schema);
-
+    println!("one symbol schema: {:?}", one_symbol_schema_hash);
     // Find the nontrivial columns of the one_symbol_schema; trivial columns are those for which all symbols are the same
     let n_cols = one_symbol_schema[0].len();
     let nontrivial_columns: Vec<usize> = (0..n_cols)
@@ -104,7 +104,7 @@ fn tss_for_one_symbol_schema_with_signature(
     while !uncovered_schema.is_empty() {
         // the schemata `root` corresponds to the representative of the two-symbol schemata that will generate on this iteration of the loop
         let root = uncovered_schema.pop_last().unwrap();
-
+        println!("root: {:?}", root);
         // a transposition is a candidate if
         // 1. it maps root to a different element of the one_symbol_schema OR
         // 2. it transposes nontrivial columns that leave root invariant.
@@ -122,6 +122,9 @@ fn tss_for_one_symbol_schema_with_signature(
                 swap_candidates.push(vec![i, j]);
             }
         }
+        println!("swap candidates: {:?}", swap_candidates);
+
+        let mut transpositions: Vec<Vec<usize>> = vec![vec![0, 0]];
 
         // Now we start looking for an inclusion-maximal product of symmetric groups that can act on root while maintaining closure.
         // The trivial group acting on root is the trivial case; we will expand from there.
@@ -132,16 +135,30 @@ fn tss_for_one_symbol_schema_with_signature(
             .collect();
         // Iterate through the candidate swaps and merge them in order if they keeps the merged set in the one_symbol_schema set.
         for y in swap_candidates {
-            // this iter,map,collect chain applies the swap to everything we have added so far
-            let swapped_schema: HashSet<Vec<u8>> = redescribed_schema
-                .iter()
-                .map(|g| {
-                    let mut gs = g.clone();
-                    gs.swap(y[0], y[1]);
-                    gs
-                })
-                .collect();
+            println!("swap candidate: {:?}", y);
 
+            // find the orbit of the transpositions so far and the candiated transposition y
+            let mut swapped_schema: HashSet<Vec<u8>> = redescribed_schema.clone();
+            let mut transpotion_candidates: Vec<Vec<usize>> = transpositions.clone();
+            transpotion_candidates.push(y.clone());
+            let mut closure_found = false;
+            while !closure_found {
+                let old_size = swapped_schema.len();
+                for transposition in transpotion_candidates.iter() {
+                    let transposed_schema: HashSet<Vec<u8>> = swapped_schema
+                        .iter()
+                        .map(|g| {
+                            let mut gs = g.clone();
+                            gs.swap(transposition[0], transposition[1]);
+                            gs
+                        })
+                        .collect();
+                    swapped_schema.extend(transposed_schema);
+                }
+                closure_found = old_size == swapped_schema.len();
+            }
+
+            println!("swapped schema: {:?}", swapped_schema);
             // check if the swap maps redescribed_schema into the one_symbol_schema set;
             // if so, add this image to the redscribed_schema and record the swapped indices.
             if swapped_schema
@@ -150,8 +167,10 @@ fn tss_for_one_symbol_schema_with_signature(
             {
                 redescribed_schema.extend(swapped_schema);
                 uncovered_schema.retain(|&g| !redescribed_schema.contains(g));
+                transpositions.push(y.clone());
                 merged_swaps[y[0]].insert(y[1]);
                 merged_swaps[y[1]].insert(y[0]);
+                println!("redescribed schema: {:?}", redescribed_schema);
             }
         }
         // record the columns of the redescribed schema that are not the same in this subset
