@@ -86,6 +86,7 @@ fn tss_for_one_symbol_schema_with_signature(
     // the members of the one_symbol_schema are hashed so that we can easily check whether a permutation of a schema maintains closure
     let one_symbol_schema_hash: HashSet<Vec<u8>> =
         HashSet::<_>::from_iter(one_symbol_schema.clone());
+
     // Find the nontrivial columns of the one_symbol_schema; trivial columns are those for which all symbols are the same
     let n_cols = one_symbol_schema[0].len();
     let nontrivial_columns: Vec<usize> = (0..n_cols)
@@ -121,9 +122,10 @@ fn tss_for_one_symbol_schema_with_signature(
                 swap_candidates.insert(vec![i, j]);
             }
         }
+
+        // We iterate over all combinations of swaps, from most to least to find the inclusion-maximal ones that work
         let mut good_swaps: Vec<HashSet<Vec<usize>>> = Vec::new();
         for skipped_swaps in swap_candidates.iter().powerset() {
-            // let mut transpositions: Vec<Vec<usize>> = Vec::new();
             let mut swaps = swap_candidates.clone();
             swaps.retain(|x| !skipped_swaps.contains(&x));
 
@@ -132,13 +134,13 @@ fn tss_for_one_symbol_schema_with_signature(
             }
 
             // Now we start looking for an inclusion-maximal product of symmetric groups that can act on root while maintaining closure.
-            // The trivial group acting on root is the trivial case; we will expand from there.
             let mut redescribed_schema: HashSet<Vec<u8>> = HashSet::new();
             redescribed_schema.insert(root.clone());
             let mut merged_swaps: Vec<HashSet<usize>> = (0..root.len())
                 .map(|ind| HashSet::from_iter(ind..ind + 1))
                 .collect();
 
+            // This section applies the transfomrations to the root iteratively until no new schema are reached
             let mut old_size = 0;
             let mut closed = true;
             while old_size != redescribed_schema.len() {
@@ -161,53 +163,27 @@ fn tss_for_one_symbol_schema_with_signature(
                     break;
                 }
             }
+
+            // if we leave the input set, the set of swaps does not form a group action on our input set of one-symbol schema
             if !closed || !redescribed_schema.is_subset(&one_symbol_schema_hash) {
                 continue;
             }
-            println!("root = {:?}", root);
-            println!("swaps = {:?}; good_swaps = {:?}", swaps, good_swaps);
-            good_swaps.push(swaps.clone());
-            // // Iterate through the candidate swaps and merge them in order if they keeps the merged set in the one_symbol_schema set.
-            // for y in swaps.iter() {
-            //     // find the orbit of the transpositions so far and the candiated transposition y
 
-            //     let mut transpotion_candidates: Vec<Vec<usize>> = transpositions.clone();
-            //     transpotion_candidates.push(y.clone());
-            //     let mut closure_found = false;
-            //     while !closure_found {
-            //         let old_size = swapped_schema.len();
-            //         for transposition in transpotion_candidates.iter() {
-            //             let transposed_schema: HashSet<Vec<u8>> = swapped_schema
-            //                 .iter()
-            //                 .map(|g| {
-            //                     let mut gs = g.clone();
-            //                     gs.swap(transposition[0], transposition[1]);
-            //                     gs
-            //                 })
-            //                 .collect();
-            //             swapped_schema.extend(transposed_schema);
-            //         }
-            //         closure_found = old_size == swapped_schema.len();
-            //     }
-
-            //     // check if the swap maps redescribed_schema into the one_symbol_schema set;
-            //     // if so, add this image to the redscribed_schema and record the swapped indices.
-            //     if swapped_schema
-            //         .iter()
-            //         .all(|g| one_symbol_schema_hash.contains(&g))
-            //     {
-            //         redescribed_schema.extend(swapped_schema);
-            //         // uncovered_schema.retain(|&g| !redescribed_schema.contains(g));
-            //         transpositions.push(y.clone());
-            //         merged_swaps[y[0]].insert(y[1]);
-            //         merged_swaps[y[1]].insert(y[0]);
-            //         good_swaps.push(swaps.clone());
-            //     }
-            // }
             // record the columns of the redescribed schema that are not the same in this subset
-            let nontrivial_redescription_columns: Vec<usize> = (0..n_cols)
-                .filter(|i| redescribed_schema.iter().any(|x| x[*i] != root[*i]))
+            let trivial_redescription_columns: Vec<usize> = (0..n_cols)
+                .filter(|i| redescribed_schema.iter().all(|x| x[*i] == root[*i]))
                 .collect();
+
+            // we skip the swaps that include trivial columns because these are not faithful group actions
+            if swaps.iter().any(|swap| {
+                swap.iter()
+                    .any(|x| trivial_redescription_columns.contains(x))
+            }) {
+                continue;
+            }
+
+            // if we found a good swap, record it so that we don't spend resources on its subsets
+            good_swaps.push(swaps.clone());
 
             // finally, convert the transpoitions to bubble indices
             let mut bubble_indices: Vec<Vec<usize>> = vec![];
@@ -218,7 +194,7 @@ fn tss_for_one_symbol_schema_with_signature(
                     continue;
                 }
                 if x.iter() // only consider transpositions that map to nontrivial columns, i.e., we are not doing same-symbol symmetry here
-                    .any(|&x| !nontrivial_redescription_columns.contains(&x))
+                    .all(|&x| trivial_redescription_columns.contains(&x))
                 {
                     continue;
                 }
@@ -230,8 +206,7 @@ fn tss_for_one_symbol_schema_with_signature(
                     bubble_indices.push(xv);
                 }
             }
-            println!("merged_swaps = {:?}", merged_swaps);
-            println!("bubble_indices = {:?}", bubble_indices);
+
             sym.insert(TwoSymbolSchemata {
                 redescribed_schema: redescribed_schema
                     .iter()
@@ -245,15 +220,6 @@ fn tss_for_one_symbol_schema_with_signature(
     }
 
     sym.into_iter().collect()
-}
-
-/// Permute x according to p
-fn permute(x: &[u8], p: &[usize]) -> Vec<u8> {
-    let mut y = x.to_vec();
-    for (i, j) in p.iter().sorted().zip(p) {
-        y.swap(*i, *j);
-    }
-    y
 }
 
 /// Find the indices where the input arrays `x` and `y` differ, and return a vector of the indices.
