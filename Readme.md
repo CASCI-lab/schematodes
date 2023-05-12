@@ -1,6 +1,12 @@
 # Schematodes
 A tool for expressing the symmetry of a set of Boolean implicants, developed with [cana](https://github.com/CASCI-lab/CANA) in mind.
 
+## Installing
+Schematodes is available on PyPI:
+```shell
+pip install schematodes
+```
+
 ## Building
 We wrote `schematodes` in `rust` for `python` with `pyO3` bindings using `maturin`. The recommended build steps are as follows:
 
