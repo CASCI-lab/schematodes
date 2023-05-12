@@ -15,8 +15,5 @@ build-backend = "maturin"
 [tool.maturin]
 features = ["pyo3/extension-module"]
 
-[tool.mypy]
-mypy_path = "stubs"
-
 [tool.isort]
 profile = "black"
