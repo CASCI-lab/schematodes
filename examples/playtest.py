@@ -184,3 +184,35 @@ tss = sc.schemer(
 for c in tss:
     print("===========================")
     print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+
+
+print()
+print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+print()
+tss = sc.schemer(
+    [
+        [0, 4, 2, 3],
+        [0, 4, 3, 2],
+        [4, 0, 2, 3],
+        [4, 0, 3, 2],
+    ]
+)
+for c in tss:
+    print("===========================")
+    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+
+print()
+print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
+print()
+tss = sc.schemer(
+    [
+        [0, 4, 2, 3],
+        [0, 4, 3, 2],
+        [4, 0, 2, 3],
+        [4, 0, 3, 2],
+    ],
+    max_symbol=4,
+)
+for c in tss:
+    print("===========================")
+    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")

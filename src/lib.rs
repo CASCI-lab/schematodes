@@ -18,17 +18,21 @@ fn schematodes(_py: Python, m: &PyModule) -> PyResult<()> {
 struct TwoSymbolSchemata {
     redescribed_schema: Vec<Vec<u8>>,
     bubble_indices: Vec<Vec<usize>>,
-    signature: (usize, usize, usize),
+    signature: Vec<usize>,
 }
 
 #[pymethods]
 impl TwoSymbolSchemata {
     #[new]
-    fn py_new(redescribed_schema: Vec<Vec<u8>>, bubble_indices: Vec<Vec<usize>>) -> PyResult<Self> {
+    fn py_new(
+        redescribed_schema: Vec<Vec<u8>>,
+        bubble_indices: Vec<Vec<usize>>,
+        signature: Vec<usize>,
+    ) -> PyResult<Self> {
         Ok(Self {
-            redescribed_schema: redescribed_schema.clone(),
+            redescribed_schema,
             bubble_indices,
-            signature: compute_signature(&redescribed_schema[0]),
+            signature,
         })
     }
     #[getter]
@@ -43,13 +47,25 @@ impl TwoSymbolSchemata {
 
 /// This is the function that will be used in Python to redescribe a set of one-symbol schema as a list of two-symbol schema.
 #[pyfunction]
-fn schemer(pis: Vec<Vec<u8>>) -> PyResult<Vec<TwoSymbolSchemata>> {
+fn schemer(pis: Vec<Vec<u8>>, max_symbol: Option<usize>) -> PyResult<Vec<TwoSymbolSchemata>> {
+    let max_symbol = max_symbol.unwrap_or_else(|| {
+        let mut max_symbol: u8 = 0;
+        for pi in &pis {
+            for x in pi {
+                if x > &max_symbol {
+                    max_symbol = *x;
+                }
+            }
+        }
+        max_symbol as usize
+    });
+
     let mut tss_vec: Vec<TwoSymbolSchemata> = Vec::new();
 
     // gather one-symbol schema by the number of 0s, 1s, and #s in the schema.
-    let mut schema_with_signature: HashMap<(usize, usize, usize), Vec<Vec<u8>>> = HashMap::new();
+    let mut schema_with_signature: HashMap<Vec<usize>, Vec<Vec<u8>>> = HashMap::new();
     for pi in pis {
-        let signature = compute_signature(&pi);
+        let signature = compute_signature(&pi, max_symbol);
         if !schema_with_signature.contains_key(&signature) {
             schema_with_signature.insert(signature, vec![pi]);
         } else {
@@ -72,7 +88,7 @@ fn schemer(pis: Vec<Vec<u8>>) -> PyResult<Vec<TwoSymbolSchemata>> {
 /// Returns a vector of TwoSymbolSchemata objects corresponding to a one_symbol_schema action of a product of symmetric one_symbol_schemas.
 fn tss_for_one_symbol_schema_with_signature(
     one_symbol_schema: &Vec<Vec<u8>>,
-    signature: (usize, usize, usize),
+    signature: Vec<usize>,
 ) -> Vec<TwoSymbolSchemata> {
     if one_symbol_schema.len() <= 1 {
         assert!(one_symbol_schema.len() == 1);
@@ -214,7 +230,7 @@ fn tss_for_one_symbol_schema_with_signature(
                     .sorted()
                     .collect(),
                 bubble_indices: bubble_indices.iter().map(|x| x.to_vec()).sorted().collect(),
-                signature,
+                signature: signature.clone(),
             });
         }
     }
@@ -242,15 +258,10 @@ fn differing_indices(x: &[u8], y: &[u8], break_above: Option<usize>) -> Vec<usiz
 }
 
 /// Compute the signature of the one-symbol schemata, which is the number of 0s, 1s, and 2s
-fn compute_signature(one_symbol_schemata: &[u8]) -> (usize, usize, usize) {
-    let mut signature = (0, 0, 0);
+fn compute_signature(one_symbol_schemata: &[u8], max_symbol: usize) -> Vec<usize> {
+    let mut signature = vec![0; max_symbol + 1];
     for x in one_symbol_schemata {
-        match x {
-            0 => signature.0 += 1,
-            1 => signature.1 += 1,
-            2 => signature.2 += 1,
-            _ => (),
-        }
+        signature[*x as usize] += 1;
     }
     signature
 }
