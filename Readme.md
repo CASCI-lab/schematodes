@@ -1,5 +1,7 @@
 # Schematodes
-A tool for expressing the symmetry of a set of Boolean implicants, developed with [cana](https://github.com/CASCI-lab/CANA) in mind.
+A tool for expressing permutation symmetries in sets of tuples. 
+
+Inspired by the study of input symmetry in Boolean network regulatory functions, and developed with [cana](https://github.com/CASCI-lab/CANA) integration in mind.
 
 ## Installing
 Schematodes is available on PyPI:
