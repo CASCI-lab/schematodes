@@ -10,9 +10,11 @@ fn schematodes(_py: Python, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-/// A Python class implemented in Rust. This is the primary return type of the module. See stub file for Python usage.
-/// The class contains three fields: redescribed_schema, bubble_indices, and signature. These are the set of one-symbol schemata that are redescribed,
-/// the indices of the bubbles, and the signature (number of 0s, number of 1s, and number of #s) of the schema.
+/// A Python class implemented in Rust. This is the primary return type of the
+/// module. See stub file for Python usage. The class contains three fields:
+/// `redescribed_schema`, `bubble_indices`, and `signature`. These are the set
+/// of one-symbol schemata that are redescribed, the indices of the bubbles, and
+/// the signature (number of instances of each unique symbol) of the schema.
 #[derive(Hash, Eq, PartialEq, Clone, Debug, Default)]
 #[pyclass]
 struct TwoSymbolSchemata {
@@ -73,14 +75,16 @@ impl TwoSymbolSchemata {
     }
 }
 
-/// This is the function that will be used in Python to redescribe a set of one-symbol schema as a list of two-symbol schema.
+/// This is the function that will be used in Python to redescribe a set of
+/// one-symbol schema as a list of two-symbol schema.
 #[pyfunction]
 fn schemer(pis: Vec<Vec<u8>>, max_symbol: Option<usize>) -> PyResult<Vec<TwoSymbolSchemata>> {
     let max_symbol = max_symbol.unwrap_or_else(|| compute_max_symbol(&pis));
 
     let mut tss_vec: Vec<TwoSymbolSchemata> = Vec::new();
 
-    // gather one-symbol schema by the number of unique symbols in the schema (we call this the signature).
+    // gather one-symbol schema by the number of instances of each unique symbol
+    // in the schema (we call this the signature).
     let mut schema_with_signature: HashMap<Vec<usize>, Vec<Vec<u8>>> = HashMap::new();
     for pi in pis {
         let signature = schemata_signature(&pi, max_symbol);
@@ -93,7 +97,8 @@ fn schemer(pis: Vec<Vec<u8>>, max_symbol: Option<usize>) -> PyResult<Vec<TwoSymb
         }
     }
 
-    // Loop through the unique signatures and compress the corresponding schema for each.
+    // Loop through the unique signatures and compress the corresponding schema
+    // for each.
     for (signature, pi) in schema_with_signature {
         let tss = tss_for_one_symbol_schema_with_signature(&pi, signature);
         tss_vec.extend(tss);
@@ -101,9 +106,11 @@ fn schemer(pis: Vec<Vec<u8>>, max_symbol: Option<usize>) -> PyResult<Vec<TwoSymb
     Ok(tss_vec)
 }
 
-/// Compress a one_symbol_schema of schema that have the same signature.
-/// This function does not verify that the signatures are equal, and will give incorrect results if they are not.
-/// Returns a vector of TwoSymbolSchemata objects corresponding to a one_symbol_schema action of a product of symmetric one_symbol_schemas.
+/// Compress a one_symbol_schema of schema that have the same signature. This
+/// function does not verify that the signatures are equal, and will give
+/// incorrect results if they are not. Returns a vector of TwoSymbolSchemata
+/// objects corresponding to a one_symbol_schema action of a product of
+/// symmetric one_symbol_schemas.
 fn tss_for_one_symbol_schema_with_signature(
     one_symbol_schema: &Vec<Vec<u8>>,
     signature: Vec<usize>,
@@ -115,11 +122,13 @@ fn tss_for_one_symbol_schema_with_signature(
             None,
         )];
     }
-    // the members of the one_symbol_schema are hashed so that we can easily check whether a permutation of a schema maintains closure
+    // the members of the one_symbol_schema are hashed so that we can easily
+    // check whether a permutation of a schema maintains closure
     let one_symbol_schema_hash: HashSet<Vec<u8>> =
         HashSet::<_>::from_iter(one_symbol_schema.clone());
 
-    // Find the nontrivial columns of the one_symbol_schema; trivial columns are those for which all symbols are the same
+    // Find the nontrivial columns of the one_symbol_schema; trivial columns are
+    // those for which all symbols are the same
     let n_cols = one_symbol_schema[0].len();
     let nontrivial_columns: Vec<usize> = (0..n_cols)
         .filter(|i| {
@@ -132,7 +141,8 @@ fn tss_for_one_symbol_schema_with_signature(
     // initialize the two-symbol schema vector that we will eventually return
     let mut sym: HashSet<TwoSymbolSchemata> = HashSet::new();
 
-    // every one-symbol schemata must eventually be covered by a two symbol schemata
+    // every one-symbol schemata must eventually be covered by a two symbol
+    // schemata
     for root in one_symbol_schema {
         // the schemata `root` corresponds to the representative of the
         // two-symbol schemata (orbit equivalence class) that will generate on
@@ -140,7 +150,8 @@ fn tss_for_one_symbol_schema_with_signature(
 
         let swap_candidates = swap_candidates(root, one_symbol_schema, &nontrivial_columns);
 
-        // We iterate over all combinations of swaps, from most to least to find the inclusion-maximal ones that work
+        // We iterate over all combinations of swaps, from most to least to find
+        // the inclusion-maximal ones that work
         let mut good_swaps: Vec<HashSet<Vec<usize>>> = Vec::new();
         for skipped_swaps in swap_candidates.iter().powerset() {
             let mut swaps = swap_candidates.clone();
@@ -153,17 +164,20 @@ fn tss_for_one_symbol_schema_with_signature(
             let (closed, redescribed_schema, merged_swaps) =
                 apply_action(root, &swaps, &one_symbol_schema_hash);
 
-            // if we leave the input set, the set of swaps does not form a group action on our input set of one-symbol schema
+            // if we leave the input set, the set of swaps does not form a group
+            // action on our input set of one-symbol schema
             if !closed || !redescribed_schema.is_subset(&one_symbol_schema_hash) {
                 continue;
             }
 
-            // record the columns of the redescribed schema that are not the same in this subset
+            // record the columns of the redescribed schema that are not the
+            // same in this subset
             let trivial_redescription_columns: Vec<usize> = (0..n_cols)
                 .filter(|i| redescribed_schema.iter().all(|x| x[*i] == root[*i]))
                 .collect();
 
-            // we skip the swaps that include trivial columns because these are not faithful group actions
+            // we skip the swaps that include trivial columns because these are
+            // not faithful group actions
             if swaps.iter().any(|swap| {
                 swap.iter()
                     .any(|x| trivial_redescription_columns.contains(x))
@@ -171,7 +185,8 @@ fn tss_for_one_symbol_schema_with_signature(
                 continue;
             }
 
-            // if we found a good swap, record it so that we don't spend resources on its subsets
+            // if we found a good swap, record it so that we don't spend
+            // resources on its subsets
             good_swaps.push(swaps.clone());
 
             let bubble_indices =
@@ -226,7 +241,8 @@ fn differing_indices(x: &[u8], y: &[u8], break_above: Option<usize>) -> Vec<usiz
     diff
 }
 
-/// Compute the signature of the one-symbol schemata, which is the number of 0s, 1s, and 2s
+/// Compute the signature of the one-symbol schemata, which is the number of
+/// instances of each unique symbol.
 fn schemata_signature(one_symbol_schemata: &[u8], max_symbol: usize) -> Vec<usize> {
     let mut signature = vec![0; max_symbol + 1];
     for x in one_symbol_schemata {
