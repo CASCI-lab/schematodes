@@ -15,10 +15,10 @@ jobs:
         with:
           python-version: 3.11
           architecture: x64
-      - name: build
+      - name: Build schematodes
         uses: PyO3/maturin-action@v1
-        with:
-          args: --develop
+      - name: Install schematodes
+        run: pip install .
       - name: Install pytest
         run: pip install pytest
       - name: Run pytest
