@@ -1,0 +1,25 @@
+name: Quick Test
+
+on:
+  push:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+          architecture: x64
+      - name: Build schematodes
+        uses: PyO3/maturin-action@v1
+      - name: Install schematodes
+        run: pip install .
+      - name: Install pytest
+        run: pip install pytest
+      - name: Run pytest
+        run: python3 -m pytest tests/

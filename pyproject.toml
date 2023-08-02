@@ -17,3 +17,7 @@ features = ["pyo3/extension-module"]
 
 [tool.isort]
 profile = "black"
+
+
+[tool.pytest]
+testpaths = ["tests"]
