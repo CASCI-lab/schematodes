@@ -76,14 +76,14 @@ impl TwoSymbolSchema {
 }
 
 /// This is the function that will be used in Python to redescribe a set of
-/// one-symbol schema as a list of two-symbol schema.
+/// one-symbol schemata as a list of two-symbol schemata.
 #[pyfunction]
 fn schemer(pis: Vec<Vec<u8>>, max_symbol: Option<usize>) -> Vec<TwoSymbolSchema> {
     let max_symbol = max_symbol.unwrap_or_else(|| compute_max_symbol(&pis));
 
     let mut tss_vec: Vec<TwoSymbolSchema> = Vec::new();
 
-    // gather one-symbol schema by the number of instances of each unique symbol
+    // gather one-symbol schemata by the number of instances of each unique symbol
     // in the schema (we call this the signature).
     let mut schemata_with_signature: HashMap<Vec<usize>, Vec<Vec<u8>>> = HashMap::new();
     for pi in pis {
@@ -97,7 +97,7 @@ fn schemer(pis: Vec<Vec<u8>>, max_symbol: Option<usize>) -> Vec<TwoSymbolSchema>
         }
     }
 
-    // Loop through the unique signatures and compress the corresponding schema
+    // Loop through the unique signatures and compress the corresponding schemata
     // for each.
     for (signature, pi) in schemata_with_signature {
         let tss = tss_for_one_symbol_schemata_with_signature(&pi, signature);
@@ -106,9 +106,9 @@ fn schemer(pis: Vec<Vec<u8>>, max_symbol: Option<usize>) -> Vec<TwoSymbolSchema>
     tss_vec
 }
 
-/// Compress a list of one symbol schema that have the same signature. This
+/// Compress a list of one symbol schemata that have the same signature. This
 /// function does not verify that the signatures are equal, and will give
-/// incorrect results if they are not. Returns a vector of `TwoSymbolSchemata`
+/// incorrect results if they are not. Returns a vector of `TwoSymbolSchema`
 /// objects corresponding to a one symbol schema action of a product of
 /// symmetric one symbol schemata.
 fn tss_for_one_symbol_schemata_with_signature(
@@ -144,9 +144,9 @@ fn tss_for_one_symbol_schemata_with_signature(
     // every one-symbol schemata must eventually be covered by a two symbol
     // schemata
     for root in one_symbol_schemata {
-        // the schemata `root` corresponds to the representative of the
-        // two-symbol schemata (orbit equivalence class) that will generate on
-        // this iteration of the loop.
+        // the schema `root` corresponds to the representative of the two-symbol
+        // schemata (orbit equivalence class) that will generate on this
+        // iteration of the loop.
 
         let swap_candidates = swap_candidates(root, one_symbol_schemata, &nontrivial_columns);
 
@@ -165,12 +165,12 @@ fn tss_for_one_symbol_schemata_with_signature(
                 apply_action(root, &swaps, &one_symbol_schemata_hash);
 
             // if we leave the input set, the set of swaps does not form a group
-            // action on our input set of one-symbol schema
+            // action on our input set of one-symbol schemata
             if !closed || !redescribed_schemata.is_subset(&one_symbol_schemata_hash) {
                 continue;
             }
 
-            // record the columns of the redescribed schema that are not the
+            // record the columns of the redescribed schemata that are not the
             // same in this subset
             let trivial_redescription_columns: Vec<usize> = (0..n_cols)
                 .filter(|i| redescribed_schemata.iter().all(|x| x[*i] == root[*i]))
@@ -285,7 +285,7 @@ fn apply_action(
     let mut merged_swaps: Vec<HashSet<usize>> =
         (0..root.len()).map(|ind| HashSet::from([ind])).collect();
     // This section applies the transfomrations to the root iteratively until no
-    // new schema are reached
+    // new schemata are reached
     let mut old_size = 0;
     let mut closed = true;
     while old_size != redescribed_schemata.len() {
