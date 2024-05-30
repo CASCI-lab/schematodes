@@ -11,7 +11,7 @@ tss = sc.schemer(
 )
 for c in tss:
     print("===========================")
-    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+    print(f"{c.redescribed_schemata} ----- \n {c.bubble_indices}")
 
 print()
 print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
@@ -35,7 +35,7 @@ tss = sc.schemer(
 )
 for c in tss:
     print("===========================")
-    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+    print(f"{c.redescribed_schemata} ----- \n {c.bubble_indices}")
 
 print()
 print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
@@ -63,7 +63,7 @@ tss = sc.schemer(
 )
 for c in tss:
     print("===========================")
-    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+    print(f"{c.redescribed_schemata} ----- \n {c.bubble_indices}")
 
 print()
 print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
@@ -80,7 +80,7 @@ tss = sc.schemer(
 )
 for c in tss:
     print("===========================")
-    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+    print(f"{c.redescribed_schemata} ----- \n {c.bubble_indices}")
 
 print()
 print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
@@ -97,7 +97,7 @@ tss = sc.schemer(
 )
 for c in tss:
     print("===========================")
-    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+    print(f"{c.redescribed_schemata} ----- \n {c.bubble_indices}")
 
 print()
 print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
@@ -111,7 +111,7 @@ tss = sc.schemer(
 )
 for c in tss:
     print("===========================")
-    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+    print(f"{c.redescribed_schemata} ----- \n {c.bubble_indices}")
 
 print()
 print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
@@ -125,7 +125,7 @@ tss = sc.schemer(
 )
 for c in tss:
     print("===========================")
-    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+    print(f"{c.redescribed_schemata} ----- \n {c.bubble_indices}")
 
 print()
 print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
@@ -140,7 +140,7 @@ tss = sc.schemer(
 )
 for c in tss:
     print("===========================")
-    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+    print(f"{c.redescribed_schemata} ----- \n {c.bubble_indices}")
 print()
 print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
 print()
@@ -153,7 +153,7 @@ tss = sc.schemer(
 )
 for c in tss:
     print("===========================")
-    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+    print(f"{c.redescribed_schemata} ----- \n {c.bubble_indices}")
 
 print()
 print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
@@ -168,7 +168,7 @@ tss = sc.schemer(
 )
 for c in tss:
     print("===========================")
-    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+    print(f"{c.redescribed_schemata} ----- \n {c.bubble_indices}")
 
 print()
 print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
@@ -183,7 +183,7 @@ tss = sc.schemer(
 )
 for c in tss:
     print("===========================")
-    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+    print(f"{c.redescribed_schemata} ----- \n {c.bubble_indices}")
 
 
 print()
@@ -199,7 +199,7 @@ tss = sc.schemer(
 )
 for c in tss:
     print("===========================")
-    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+    print(f"{c.redescribed_schemata} ----- \n {c.bubble_indices}")
 
 print()
 print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-")
@@ -215,4 +215,4 @@ tss = sc.schemer(
 )
 for c in tss:
     print("===========================")
-    print(f"{c.redescribed_schema} ----- \n {c.bubble_indices}")
+    print(f"{c.redescribed_schemata} ----- \n {c.bubble_indices}")
