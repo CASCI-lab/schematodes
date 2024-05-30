@@ -1,11 +1,17 @@
 [project]
 name = "schematodes"
+authors = [{ name = "Jordan Rozum", email = "jrozum@binghamton.edu" }]
+description = "A tool for expressing permutation symmetries in sets of tuples."
+readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.7"
+version = "1.0.0"
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
+
 
 [build-system]
 requires = ["maturin>=0.14,<0.15"]
