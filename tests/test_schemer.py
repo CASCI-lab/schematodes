@@ -3,14 +3,14 @@ import schematodes as sc
 TruthType = list[tuple[list[int], list[list[int]]]]
 
 
-def confirm(tss: list[sc.TwoSymbolSchemata], truth: TruthType):
+def confirm(tss: list[sc.TwoSymbolSchema], truth: TruthType):
     success = True
     messages: list[str] = []
     coverage = [0] * len(tss)
     for rep, bubbles in truth:
         truth_found = False
         for i, c in enumerate(tss):
-            if rep in c.redescribed_schema:
+            if rep in c.redescribed_schemata:
                 output_bubbles: set[tuple[int, ...]] = set(
                     tuple(b) for b in c.bubble_indices
                 )
@@ -25,7 +25,7 @@ def confirm(tss: list[sc.TwoSymbolSchemata], truth: TruthType):
             messages.append(f"true value {rep=}, {bubbles=} not found in output")
 
     for i, x in enumerate(coverage):
-        orbit, bubbles = tss[i].redescribed_schema, tss[i].bubble_indices
+        orbit, bubbles = tss[i].redescribed_schemata, tss[i].bubble_indices
         if x == 0:
             success = False
             messages.append(
