@@ -5,7 +5,7 @@ description = "A tool for expressing permutation symmetries in sets of tuples."
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.7"
-version = "1.0.0"
+version = "1.0.1"
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
@@ -14,7 +14,7 @@ classifiers = [
 
 
 [build-system]
-requires = ["maturin>=0.14,<0.15"]
+requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 
